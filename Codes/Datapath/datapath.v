@@ -1,180 +1,294 @@
-// division with power to two every level.
+module datapath #(
+    parameter ADDR_WIDTH   = 12,
+    parameter WORD_WIDTH   = 64,
+    parameter DATA_WIDTH   = 32,
+    parameter REAL_LENGTH  = 16,
+    parameter FRACTIONAL_L = 14
+)(
+    input clk,
+    input rstn,
 
-module datapath (#parameter ADDR_WIDTH = 12, parameter WORD_WIDTH = 16, parameter BUFF_RAM_WORD_WIDTH = 32, parameter IRAM_LOG_BLOCK_SIZE = 2, parameter FRACTIONAL_L = 5, REAL_LENGTH = 8, FIXEDPOINT = 16)(
-    input clk, 
-    input rst, 
+    input i_buff_read_sel,
+    input dFF1_enbl,
+    input dFF2_enbl,
+    input mux2x1_sel,
+    input mux2x2_sel,
+    input dFFw_enbl,
+    input mux1w_sel,
+    input wref_ff_enbl,
+    input mux2w_sel,
 
-    //signals to iram module
-    output iram_wr_addr0 [ADDR_WIDTH-1:IRAM_LOG_BLOCK_SIZE],
-    output iram_wr_addr1 [ADDR_WIDTH-1:IRAM_LOG_BLOCK_SIZE],
-    output addr_map_addr_out0 [ADDR_WIDTH-1:IRAM_LOG_BLOCK_SIZE],
-    output addr_map_addr_out1 [ADDR_WIDTH-1:IRAM_LOG_BLOCK_SIZE],
-    output [WORD_WIDTH-1:0] iram_wr_data0, 
-    output [WORD_WIDTH-1:0] iram_wr_data1, 
-    input [WORD_WIDTH-1:0] iram_rd_data0, ////////////////////////////////////
-    input [WORD_WIDTH-1:0] iram_rd_data1 ////////////////////////////////////
+    input dFF1_enbl_s,
+    input dFF2_enbl_s,
+    input mux1s_sel,
+    input mux2s_sel,
 
-    //signals to oram module
-    output oram_wr_addr0 [ADDR_WIDTH-1:IRAM_LOG_BLOCK_SIZE],
-    output oram_wr_addr1 [ADDR_WIDTH-1:IRAM_LOG_BLOCK_SIZE],
-    output oram_rd_addr0 [ADDR_WIDTH-1:IRAM_LOG_BLOCK_SIZE],
-    output oram_rd_addr1 [ADDR_WIDTH-1:IRAM_LOG_BLOCK_SIZE],
-    output compute_out0,
-    output compute_out1,
-    input [WORD_WIDTH-1:0] oram_rd_data0, ////////////////////////////////////
-    input [WORD_WIDTH-1:0] oram_rd_data1 ////////////////////////////////////
+    input iram_rd_enbl,
+    input iram_wr_enbl,
+    input buff_rd_enbl,
+    input buff_wr_enbl,
+    input oram_rd_enbl,
+    input oram_wr_enbl,
 
-    //Signals from Control Unit
+    input add_gen_en_l,
+    input add_gen_en_s,
+    input add_0_1_l,
+    input add_0_1_s,
+    input tw_en,
+    input waste_cycle,
+    input counter_rst_l,
+    input counter_rst_s,
+    input tw_count_en,
+    input lvl_enb,
+
+    input  [ADDR_WIDTH-1:0] iram_wr_addr,
+    input  [WORD_WIDTH-1:0] iram_wr_data,
+    input  [ADDR_WIDTH-1:0] oram_rd_addr,
+    output [WORD_WIDTH-1:0] oram_rd_data,
+
+    output [ADDR_WIDTH-1:0] buff_ram_wr_addr,
+    output [3:0]            lvl,
+
+    output [WORD_WIDTH-1:0] y
+);
+
+    wire [3:0] lvl_int;
+    assign lvl = lvl_int;
+
+    wire [ADDR_WIDTH-2:0] iram_rd_addr_int;
+    wire [ADDR_WIDTH-1:0] buff_rd_addr_int;
+    wire [ADDR_WIDTH-1:0] buff_wr_addr_int;
+    wire [ADDR_WIDTH-2:0] oram_wr_addr_int;
+
+    assign buff_ram_wr_addr = buff_wr_addr_int;
+
+    wire [WORD_WIDTH-1:0] iram_rd_data;
+    wire [WORD_WIDTH-1:0] buff_rd_data;
+
+    wire [WORD_WIDTH-1:0] compute_wr_data;
+
+    lvl u_lvl (
+        .clk(clk),
+        .rstn(rstn),
+        .lvl_enb(lvl_enb),
+        .lvl(lvl_int)
+    );
+
+    wire count_addr_0;
+
+    i_buff_oram_add #(
+        .DATA_WIDTH(WORD_WIDTH),
+        .IRAM_ADDR_WIDTH(ADDR_WIDTH-1),
+        .BUFF_ADDR_WIDTH(ADDR_WIDTH),
+        .ORAM_ADDR_WIDTH(ADDR_WIDTH-1)
+    ) u_addr_gen (
+        .clk(clk),
+        .rstn(rstn),
+        .add_gen_en_l(add_gen_en_l),
+        .add_gen_en_s(add_gen_en_s),
+        .lvl(lvl_int),
+        .add_0_1_l(add_0_1_l),
+        .add_0_1_s(add_0_1_s),
+        .tw_en(tw_en),
+        .waste_cycle(waste_cycle),
+        .counter_rst_l(counter_rst_l),
+        .counter_rst_s(counter_rst_s),
+        .tw_count_en(tw_count_en),
+        .count_addr_0(count_addr_0),
+        .i_ram_rd_addr(iram_rd_addr_int),
+        .buff_ram_rd_addr(buff_rd_addr_int),
+        .buff_ram_wr_addr(buff_wr_addr_int),
+        .oram_wr_addr(oram_wr_addr_int)
+    );
+
+    iram #(
+        .ADDR_WIDTH(ADDR_WIDTH),
+        .WORD_WIDTH(WORD_WIDTH)
+    ) u_iram (
+        .clk(clk),
+        .rstn(rstn),
+        .iram_wr_enbl(iram_wr_enbl),
+        .iram_rd_enbl(iram_rd_enbl),
+        .iram_wr_addr(iram_wr_addr),
+        .iram_rd_addr({1'b0, iram_rd_addr_int}),
+        .iram_wr_data(iram_wr_data),
+        .iram_rd_data(iram_rd_data)
+    );
+
+    buff #(
+        .ADDR_WIDTH(ADDR_WIDTH),
+        .WORD_WIDTH(WORD_WIDTH),
+        .FRACTIONAL_L(FRACTIONAL_L)
+    ) u_buff_mem (
+        .clk(clk),
+        .rstn(rstn),
+        .buff_wr_enbl(buff_wr_enbl),
+        .buff_rd_enbl(buff_rd_enbl),
+        .buff_wr_addr(buff_wr_addr_int),
+        .buff_rd_addr(buff_rd_addr_int),
+        .buff_wr_data(compute_wr_data),
+        .buff_rd_data(buff_rd_data)
+    );
+
+    oram #(
+        .ADDR_WIDTH(ADDR_WIDTH),
+        .WORD_WIDTH(WORD_WIDTH)
+    ) u_oram (
+        .clk(clk),
+        .rstn(rstn),
+        .oram_wr_enbl(oram_wr_enbl),
+        .oram_rd_enbl(oram_rd_enbl),
+        .oram_wr_addr({1'b0, oram_wr_addr_int}),
+        .oram_rd_addr(oram_rd_addr),
+        .oram_wr_data(compute_wr_data),
+        .oram_rd_data(oram_rd_data)
+    );
+
+    wire [WORD_WIDTH-1:0] iram_buff_rd_data;
+
+    mux2 #(
+        .DATA_WIDTH(WORD_WIDTH)
+    ) u_i_buff_mux (
+        .in0(iram_rd_data),
+        .in1(buff_rd_data),
+        .sel(i_buff_read_sel),
+        .out(iram_buff_rd_data)
+    );
+
+    wire [WORD_WIDTH-1:0] sipo_dout0;
+    wire [WORD_WIDTH-1:0] sipo_dout1;
+
+    sipo #(
+        .DATA_WIDTH(WORD_WIDTH)
+    ) u_sipo (
+        .clk(clk),
+        .rstn(rstn),
+        .en0_d(dFF1_enbl),
+        .en1_d(dFF2_enbl),
+        .din(iram_buff_rd_data),
+        .dout0(sipo_dout0),
+        .dout1(sipo_dout1)
+    );
+
+    wire [DATA_WIDTH-1:0] x_1;
+    wire [DATA_WIDTH-1:0] x_2;
+
+    mux2 #(
+        .DATA_WIDTH(DATA_WIDTH)
+    ) u_mux2x1 (
+        .in0(sipo_dout0[WORD_WIDTH-1:DATA_WIDTH]),
+        .in1(sipo_dout1[DATA_WIDTH-1:0]),
+        .sel(mux2x1_sel),
+        .out(x_1)
+    );
+
+    mux2 #(
+        .DATA_WIDTH(DATA_WIDTH)
+    ) u_mux2x2 (
+        .in0(iram_buff_rd_data[WORD_WIDTH-1:DATA_WIDTH]),
+        .in1(sipo_dout0[DATA_WIDTH-1:0]),
+        .sel(mux2x2_sel),
+        .out(x_2)
+    );
+
+    wire [DATA_WIDTH-1:0] dffw_msb_out;
+    wire [DATA_WIDTH-1:0] dffw_lsb_out;
+    wire [DATA_WIDTH-1:0] mux1w_out;
+    wire [DATA_WIDTH-1:0] wref_out;
+    wire [DATA_WIDTH-1:0] w_mult_out;
+    wire [DATA_WIDTH-1:0] W;
+
+    siso_32 u_dffw_msb (
+        .clk(clk),
+        .rstn(rstn),
+        .en(dFFw_enbl),
+        .din(iram_buff_rd_data[WORD_WIDTH-1:DATA_WIDTH]),
+        .dout(dffw_msb_out)
+    );
+
+    siso_32 u_dffw_lsb (
+        .clk(clk),
+        .rstn(rstn),
+        .en(dFFw_enbl),
+        .din(iram_buff_rd_data[DATA_WIDTH-1:0]),
+        .dout(dffw_lsb_out)
+    );
+
+    mux2 #(
+        .DATA_WIDTH(DATA_WIDTH)
+    ) u_mux1w (
+        .in0(dffw_msb_out),
+        .in1(dffw_lsb_out),
+        .sel(count_addr_0 ? 1'b1 : 1'b0),
+        .out(mux1w_out)
+    );
+
+    siso_32 u_wref_ff (
+        .clk(clk),
+        .rstn(rstn),
+        .en(wref_ff_enbl),
+        .din(iram_buff_rd_data[DATA_WIDTH-1:0]),
+        .dout(wref_out)
+    );
+
+    multiplier #(
+        .TOTAL_WIDTH(DATA_WIDTH),
+        .REAL_LENGTH(REAL_LENGTH),
+        .FRACTIONAL_L(FRACTIONAL_L)
+    ) u_w_mult (
+        .w1(mux1w_out),
+        .w2(wref_out),
+        .y(w_mult_out)
+    );
+
+    mux2 #(
+        .DATA_WIDTH(DATA_WIDTH)
+    ) u_mux2w (
+        .in0(mux1w_out),
+        .in1(w_mult_out),
+        .sel(mux2w_sel),
+        .out(W)
+    );
+
+    wire [DATA_WIDTH-1:0] y1_int;
+    wire [DATA_WIDTH-1:0] y2_int;
+
+    compute #(
+        .DATA_WIDTH(DATA_WIDTH),
+        .REAL_LENGTH(REAL_LENGTH),
+        .FRACTIONAL_L(FRACTIONAL_L)
+    ) u_compute (
+        .twiddle_factor(W),
+        .x_1(x_1),
+        .x_2(x_2),
+        .y_1(y1_int),
+        .y_2(y2_int)
+    );
+
+    wire [WORD_WIDTH-1:0] sipo_y1_s;
+    wire [WORD_WIDTH-1:0] sipo_y0_s;
+
+    sipo #(
+        .DATA_WIDTH(WORD_WIDTH)
+    ) u_sipo_store (
+        .clk(clk),
+        .rstn(rstn),
+        .en0_d(dFF1_enbl_s),
+        .en1_d(dFF2_enbl_s),
+        .din({y1_int,y2_int}),
+        .dout0(sipo_y0_s),
+        .dout1(sipo_y1_s)
+    );
     
-    //pc_cnt
-    input pc_enbl;
+    wire [WORD_WIDTH-1:0] wr_data_lvl1 = (mux1s_sel == 1'b0) ? sipo_y1_s : sipo_y0_s;
+    wire [WORD_WIDTH-1:0] wr_data_other = (mux1s_sel == 1'b0) ? 
+        {sipo_y1_s[WORD_WIDTH-1:DATA_WIDTH], sipo_y0_s[WORD_WIDTH-1:DATA_WIDTH]} :
+        {sipo_y1_s[DATA_WIDTH-1:0],          sipo_y0_s[DATA_WIDTH-1:0]};
 
-    //lvl_cnt
-    input lvl_cnt_clr
-    input lvl_cnt_enbl 
+    assign compute_wr_data = (lvl_int == 4'd1) ? wr_data_lvl1 : wr_data_other;
 
-    //buff_mem
-    input buff_mem_rd_enbl,
-    input buff_mem_wr_enbl,
-
-    //buff iram data mux control
-    input buff_to_reg,
-);
-
-//wires and reg for pc_counter
-wire [ADDR_WIDTH-1:0] pc_addr_out0;
-wire [ADDR_WIDTH-1:0] pc_addr_out1;
-reg [ADDR_WIDTH-1:0] delayed_pc_addr_out0;
-reg [ADDR_WIDTH-1:0] delayed_pc_addr_out1;
-
-
-//Instantiating PC counter
-pc_cnt #(ADDR_WIDTH.(ADDR_WIDTH)) pc_counter (
-    clk.(clk),
-    rst.(rst),// is it synchornous or asynchornous ??
-    pc_enbl.(pc_enbl),
-    pc_addr_out0.(pc_addr_out0),
-    pc_addr_out1.(pc_addr_out1)
-);
-
-//wires for level counter
-wire [3:0] lvl;
-
-//Instantiating level Counter
-lvl_cnt (
-    clk.(clk), 
-    rst.(rst),
-    lvl_cnt_clr.(lvl_cnt_clr), 
-    lvl_cnt_enbl.(lvl_cnt_enbl),
-    lvl.(lvl)
-);
-
-//wires for addr mapper
-wire [ADDR_WIDTH-1:0] addr_out0.(addr_map_addr_out0);
-wire [ADDR_WIDTH-1:0] addr_out1.(addr_map_addr_out1);
-
-//Instantiating addr mapper
-addr_map #(ADDR_WIDTH.(ADDR_WIDTH)) addr_mapper(
-  lvl.(lvl), 
-  addr_in0.(pc_addr_in0),
-  addr_in1.(pc_addr_in1), 
-  addr_out0.(addr_map_addr_out0),
-  addr_out1.(addr_map_addr_out1) 
-);
-
-//wires for iram data mapping
-wire [WORD_WIDTH-1:0] iram_to_reg_data0;
-wire [WORD_WIDTH-1:0] iram_to_reg_data1;
-
-//IRAM data mapping
-mux4 #(DATA_WIDTH.(WORD_WIDTH)) iram_data0_mux4 (
-    in0.(iram_rd_data0[WORD_WIDTH-1:0]),
-    in1.(iram_rd_data0[(WORD_WIDTH << 1)-1:WORD_WIDTH]),
-    in2.(iram_rd_data0[(WORD_WIDTH << 1)+WORD_WIDTH-1 : (WORD_WIDTH << 1) ]),
-    in3.(iram_rd_data0[(WORD_WIDTH << 2)-1:(WORD_WIDTH << 1)+WORD_WIDTH]),
-    sel.(addr_map_addr_out0[IRAM_LOG_BLOCK_SIZE-1:0]),
-    out.(iram_to_mux_data0)
-);
-
-//IRAM data mapping
-mux4 #(DATA_WIDTH.(WORD_WIDTH)) iram_data1_mux4 (
-    in0.(iram_rd_data1[WORD_WIDTH-1:0]),
-    in1.(iram_rd_data1[(WORD_WIDTH << 1)-1:WORD_WIDTH]),
-    in2.(iram_rd_data1[(WORD_WIDTH << 1)+WORD_WIDTH-1 : (WORD_WIDTH << 1) ]),
-    in3.(iram_rd_data1[(WORD_WIDTH << 2)-1:(WORD_WIDTH << 1)+WORD_WIDTH]),
-    sel.(addr_map_addr_out1[IRAM_LOG_BLOCK_SIZE-1:0]),
-    out.(iram_to_mux_data1)
-);
-
-//wires for buff_ram module
-wire [WORD_WIDTH-1:0] buff_mem_rd_data0;
-wire [WORD_WIDTH-1:0] buff_mem_rd_data1;
-
-//Instantiating buff_ram module
-buff_mem (ADDR_WIDTH.(ADDR_WIDTH), WORD_WIDTH.(BUFF_RAM_WORD_WIDTH)) buff_memory(
-    clk.(clk), 
-    rst.(rst),//active high 
-    rd_enbl.(buff_mem_rd_enbl),
-    wr_enbl.(buff_mem_wr_enbl),
-    wr_addr0.(delayed_pc_addr_out0),  
-    wr_addr1.(delayed_pc_addr_out1), 
-    rd_addr0.(pc_addr_out0),
-    rd_addr1.(pc_addr_out1),
-    wr_data0.(compute_out0),
-    wr_data1.(compute_out1),
-    rd_data0.(buff_mem_rd_data0),
-    rd_data1.(buff_mem_rd_data1)
-);
-
-//wires for iram and buff ram mux
-wire [WORD_WIDTH-1:0] buff_iram_mux_data0_out;
-wire [WORD_WIDTH-1:0] buff_iram_mux_data1_out;
-
-//Data mapping between iram and buff ram
-mux2 #(DATA_WIDTH.(WORD_WIDTH)) buff_iram_data0_mux(
-    in0.(iram_to_mux_data0),
-    in1.(buff_mem_rd_data0),
-    sel.(buff_to_reg),
-    out.(buff_iram_mux_data0_out)
-);
-
-mux2 #(DATA_WIDTH.(WORD_WIDTH)) buff_iram_data1_mux(
-    in0.(iram_to_mux_data1),
-    in1.(buff_mem_rd_data1),
-    sel.(buff_to_reg),
-    out.(buff_iram_mux_data1_out)
-);
-
-//register file to store the compute in0 and in1
-reg [WORD_WIDTH-1:0] compute_in0;
-reg [WORD_WIDTH-1:0] compute in1;
-
-always @(posedge clk)
-begin
-    if(rst)
-    begin
-        compute_in0 <= {WORD_WIDTH{1'b0}};
-        compute_in1 <= {WORD_WIDTH{1'b0}};
-    end
-    else
-    begin
-        compute_in0 <= buff_iram_mux_data0_out;
-        compute_in1 <= buff_iram_mux_data1_out;
-    end
-end
-
-//wires for compute module
-wire [WORD_WIDTH] compute_out0;
-wire [WORD_WIDTH] compute_out1;
-
-compute #(FIXEDPOINT.(FIXEDPOINT),FRACTIONAL_L.(FRACTIONAL_L),REAL_LENGTH.(REAL_LENGTH)) compute_module (
-    twiddle_factor.(twiddle_factor),
-    x_1.(compute_in0),
-    x_2.(compute_in1),
-    y_1.(compute_out0),
-    y_2.(compute_out1)
-);
+    assign y = compute_wr_data;
 
 
 
-endmodule 
+endmodule
