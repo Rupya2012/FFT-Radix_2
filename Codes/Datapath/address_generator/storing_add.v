@@ -4,9 +4,9 @@ module storing_add #(
 )(
     input clk,
     input rstn,
-    input add_gen_en_s,       // control
+    input add_gen_en_s,       
     input [3:0] lvl,
-    input add_0_1_s,          // control
+    input add_0_1_s,          
     input counter_rst_s,
     output reg [ADDR_WIDTH-1:0] addr
 );

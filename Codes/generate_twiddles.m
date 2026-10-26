@@ -26,7 +26,7 @@ ref_words = cell(12, 1);
 for lvl = 1:12
     N = 2^lvl;
     tw32 = make_twiddle_32(1, N, SCALE_FACTOR);
-    tw64_ref = sprintf('00000000%s', tw32);
+    tw64_ref = sprintf('00004000%s', tw32);
     ref_words{lvl} = tw64_ref;
     fprintf(fid_ref, '%s\n', tw64_ref);
     fprintf('  Lvl %2d (N=%4d): %s\n', lvl, N, tw64_ref);
@@ -63,10 +63,10 @@ for i = 1:size(lvl_config, 1)
     
     for m = 0:(num_words - 1)
         if lvl > 2
-            p = 2 * m;        % Base twiddle W^{2m} for both BF0 and BF1
-            tw_32 = make_twiddle_32(p, N, SCALE_FACTOR);
-            tw0_32 = tw_32;
-            tw1_32 = tw_32;
+            p0 = 4 * m;       % LSB 32: W^{4m}
+            p1 = 4 * m + 2;   % MSB 32: W^{4m+2}
+            tw0_32 = make_twiddle_32(p0, N, SCALE_FACTOR);
+            tw1_32 = make_twiddle_32(p1, N, SCALE_FACTOR);
         elseif lvl == 2
             tw0_32 = make_twiddle_32(0, 4, SCALE_FACTOR);
             tw1_32 = make_twiddle_32(0, 4, SCALE_FACTOR);
@@ -102,61 +102,61 @@ end
 
 % 2048..2559: Level 12 (512 words)
 for m = 0:511
-    tw = make_twiddle_32(2*m, 4096, SCALE_FACTOR);
-    mem{2048 + m + 1} = sprintf('%s%s', tw, tw);
+    mem{2048 + m + 1} = sprintf('%s%s', make_twiddle_32(4*m+2, 4096, SCALE_FACTOR), ...
+                                        make_twiddle_32(4*m,   4096, SCALE_FACTOR));
 end
 
 % 2560..2815: Level 11 (256 words)
 for m = 0:255
-    tw = make_twiddle_32(2*m, 2048, SCALE_FACTOR);
-    mem{2560 + m + 1} = sprintf('%s%s', tw, tw);
+    mem{2560 + m + 1} = sprintf('%s%s', make_twiddle_32(4*m+2, 2048, SCALE_FACTOR), ...
+                                        make_twiddle_32(4*m,   2048, SCALE_FACTOR));
 end
 
 % 2816..2943: Level 10 (128 words)
 for m = 0:127
-    tw = make_twiddle_32(2*m, 1024, SCALE_FACTOR);
-    mem{2816 + m + 1} = sprintf('%s%s', tw, tw);
+    mem{2816 + m + 1} = sprintf('%s%s', make_twiddle_32(4*m+2, 1024, SCALE_FACTOR), ...
+                                        make_twiddle_32(4*m,   1024, SCALE_FACTOR));
 end
 
 % 2944..3007: Level 9 (64 words)
 for m = 0:63
-    tw = make_twiddle_32(2*m, 512, SCALE_FACTOR);
-    mem{2944 + m + 1} = sprintf('%s%s', tw, tw);
+    mem{2944 + m + 1} = sprintf('%s%s', make_twiddle_32(4*m+2, 512, SCALE_FACTOR), ...
+                                        make_twiddle_32(4*m,   512, SCALE_FACTOR));
 end
 
 % 3008..3039: Level 8 (32 words)
 for m = 0:31
-    tw = make_twiddle_32(2*m, 256, SCALE_FACTOR);
-    mem{3008 + m + 1} = sprintf('%s%s', tw, tw);
+    mem{3008 + m + 1} = sprintf('%s%s', make_twiddle_32(4*m+2, 256, SCALE_FACTOR), ...
+                                        make_twiddle_32(4*m,   256, SCALE_FACTOR));
 end
 
 % 3040..3055: Level 7 (16 words)
 for m = 0:15
-    tw = make_twiddle_32(2*m, 128, SCALE_FACTOR);
-    mem{3040 + m + 1} = sprintf('%s%s', tw, tw);
+    mem{3040 + m + 1} = sprintf('%s%s', make_twiddle_32(4*m+2, 128, SCALE_FACTOR), ...
+                                        make_twiddle_32(4*m,   128, SCALE_FACTOR));
 end
 
 % 3056..3063: Level 6 (8 words)
 for m = 0:7
-    tw = make_twiddle_32(2*m, 64, SCALE_FACTOR);
-    mem{3056 + m + 1} = sprintf('%s%s', tw, tw);
+    mem{3056 + m + 1} = sprintf('%s%s', make_twiddle_32(4*m+2, 64, SCALE_FACTOR), ...
+                                        make_twiddle_32(4*m,   64, SCALE_FACTOR));
 end
 
 % 3064..3067: Level 5 (4 words)
 for m = 0:3
-    tw = make_twiddle_32(2*m, 32, SCALE_FACTOR);
-    mem{3064 + m + 1} = sprintf('%s%s', tw, tw);
+    mem{3064 + m + 1} = sprintf('%s%s', make_twiddle_32(4*m+2, 32, SCALE_FACTOR), ...
+                                        make_twiddle_32(4*m,   32, SCALE_FACTOR));
 end
 
 % 3068..3069: Level 4 (2 words)
 for m = 0:1
-    tw = make_twiddle_32(2*m, 16, SCALE_FACTOR);
-    mem{3068 + m + 1} = sprintf('%s%s', tw, tw);
+    mem{3068 + m + 1} = sprintf('%s%s', make_twiddle_32(4*m+2, 16, SCALE_FACTOR), ...
+                                        make_twiddle_32(4*m,   16, SCALE_FACTOR));
 end
 
 % 3070: Level 3 (1 word)
-tw3 = make_twiddle_32(0, 8, SCALE_FACTOR);
-mem{3070 + 1} = sprintf('%s%s', tw3, tw3);
+mem{3070 + 1} = sprintf('%s%s', make_twiddle_32(2, 8, SCALE_FACTOR), ...
+                                make_twiddle_32(0, 8, SCALE_FACTOR));
 
 % 3071: Level 2 (1 word)
 mem{3071 + 1} = sprintf('%s%s', make_twiddle_32(0, 4, SCALE_FACTOR), ...

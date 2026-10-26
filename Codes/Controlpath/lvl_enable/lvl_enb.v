@@ -8,15 +8,6 @@ module lvl_enb #(
   output reg lvl_enb
 );
 
-// reg [ADDR_WIDTH-1:0] end_addr;
-
-// always @(*) begin
-//   if (lvl <= 4'd1) begin
-//     end_addr = 12'd2047;
-//   end else begin
-//     end_addr = 12'd2047 - (12'd1 << (lvl - 4'd2));
-//   end
-// end
 
 always @(posedge clk) begin 
   if (!rstn) begin

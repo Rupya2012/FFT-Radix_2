@@ -6,13 +6,13 @@ module i_buff_oram_add #(
 )(
     input clk,
     input rstn,
-    input add_gen_en_l,       // control
-    input add_gen_en_s,       // control
+    input add_gen_en_l,       
+    input add_gen_en_s,       
     input [3:0] lvl, 
-    input add_0_1_l,          // control
-    input add_0_1_s,          // control
-    input tw_en,              // control
-    input waste_cycle,        // control
+    input add_0_1_l,          
+    input add_0_1_s,          
+    input tw_en,              
+    input waste_cycle,        
     input counter_rst_l,
     input counter_rst_s,
     input tw_count_en,

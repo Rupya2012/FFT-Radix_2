@@ -281,9 +281,7 @@ module datapath #(
     );
     
     wire [WORD_WIDTH-1:0] wr_data_lvl1 = (mux1s_sel == 1'b0) ? sipo_y1_s : sipo_y0_s;
-    wire [WORD_WIDTH-1:0] wr_data_other = (mux1s_sel == 1'b0) ? 
-        {sipo_y1_s[WORD_WIDTH-1:DATA_WIDTH], sipo_y0_s[WORD_WIDTH-1:DATA_WIDTH]} :
-        {sipo_y1_s[DATA_WIDTH-1:0],          sipo_y0_s[DATA_WIDTH-1:0]};
+    wire [WORD_WIDTH-1:0] wr_data_other = (mux1s_sel == 1'b0) ? {sipo_y1_s[WORD_WIDTH-1:DATA_WIDTH], sipo_y0_s[WORD_WIDTH-1:DATA_WIDTH]} :{sipo_y1_s[DATA_WIDTH-1:0],sipo_y0_s[DATA_WIDTH-1:0]};
 
     assign compute_wr_data = (lvl_int == 4'd1) ? wr_data_lvl1 : wr_data_other;
 

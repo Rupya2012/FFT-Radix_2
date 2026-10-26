@@ -34,7 +34,7 @@ always @(*) begin
       iram_rd_enbl = 1'b0;
     end
 
-    // Write enables: active during Cycle 1 and Cycle 2 once pipeline is filled (count_5_init == 5)
+    // Write enables: active during Cycle 1 and Cycle 2 (after count_5_init == 5)
     if (count_5_init == 3'd5 && (count_5 == 3'd1 || count_5 == 3'd2)) begin
       if (lvl == 4'd12) begin
         buff_wr_enbl = 1'b0;
